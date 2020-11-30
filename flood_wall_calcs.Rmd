@@ -1,0 +1,161 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+storm cost thingie
+
+```{r}
+library(ggplot2)
+library(reshape2)
+library(tswge)
+library(tidyverse)
+```
+
+
+```{r}
+#hurricanes that had significant impact on the city
+orleans <- read.csv('D:/SMU/DS 6390 Visualization/orleans_county_noaa_data_costliest.csv')
+harris <- read.csv('D:/SMU/DS 6390 Visualization/harris_county_noaa_data_costliest.csv')
+```
+
+```{r}
+dfo <- orleans[, c('CZ_NAME_STR', 'BEGIN_DATE', 'EVENT_TYPE', 'DAMAGE_PROPERTY_NUM', 'title')]
+dfh <- harris[, c('CZ_NAME_STR', 'BEGIN_DATE', 'EVENT_TYPE', 'DAMAGE_PROPERTY_NUM', 'title')]
+dfo$BEGIN_DATE <- as.Date((dfo$BEGIN_DATE), '%m/%d/%Y')
+dfh$BEGIN_DATE <- as.Date((dfh$BEGIN_DATE), '%m/%d/%Y')
+
+#sort by date
+orleans2 <- dfo[order(dfo$BEGIN_DATE), ]
+harris2 <- dfh[order(dfh$BEGIN_DATE), ]
+```
+
+```{r}
+ggplot(orleans2) + 
+  geom_line(aes(BEGIN_DATE, DAMAGE_PROPERTY_NUM)) +
+  scale_y_log10() + xlab('Date') + ylab('Property Damages (Scaled)') +
+  ggtitle('NOAA Weather Event Data 2000-2020', subtitle = 'Orleans County') +
+  geom_text(aes(BEGIN_DATE, DAMAGE_PROPERTY_NUM, label = title)) +
+  geom_segment(x = as.Date('05/14/2013', '%m/%d/%Y'), y = 0, xend = as.Date('05/14/2013', '%m/%d/%Y'), yend = 1.1e+1, colour = 'blue')+
+  geom_text(aes(x = as.Date('05/14/2013', '%m/%d/%Y'), y = 1.79e+10), label = 'IHNC Lake Borgne Surge Barrier Completed')
+#add major storm labels?? 
+#clean up labels later
+#ended up just removing doubles from the csv
+```
+
+```{r}
+
+#v2 <- ggplot()
+```
+
+
+```{r}
+ggplot(harris2) + 
+  geom_line(aes(BEGIN_DATE, DAMAGE_PROPERTY_NUM)) +
+  scale_y_log10() + xlab('Date') + ylab('Property Damages (Scaled)') +
+  ggtitle('NOAA Weather Event Data 2000-2020', subtitle = 'Harris County') +
+  geom_text(aes(BEGIN_DATE, DAMAGE_PROPERTY_NUM, label = title))
+```
+
+Time Series Analysis 
+
+```{r}
+o1 <-read.csv('D:/SMU/DS 6390 Visualization/harris_noaa_dat/orleans_1950-2020.csv')
+o1$BEGIN_DATE <- as.Date((o1$BEGIN_DATE), '%m/%d/%Y')
+o1$DAMAGE_PROPERTY_NUM <- as.integer(o1$DAMAGE_PROPERTY_NUM)
+o1$Damages[is.na(o1$DAMAGE_PROPERTY_NUM)] <- 0
+
+d_range <- seq(o1$BEGIN_DATE[1], by ='day', to = o1$BEGIN_DATE[length(o1$BEGIN_DATE)])
+odf <- data.frame('date' = d_range, 'damages' = NA)
+o_set <- o1[c('BEGIN_DATE', 'DAMAGE_PROPERTY_NUM')]
+names(o_set) <- c('date', 'damages')
+
+o_line <- merge(odf, o_set, by = 'date', all.y = TRUE)
+o_line <- o_line[, c(1, 3)]
+names(o_line) <- c('Date', 'Damages')
+o_line$Damages[is.na(o_line$Damages)] <- 0
+#head(o_line)
+plotts.sample.wge(o_line$Damages)
+```
+
+```{r}
+p1 <- read.csv('D:/SMU/DS 6390 Visualization/harris_noaa_dat/1950-1995.csv')
+p2 <- read.csv('D:/SMU/DS 6390 Visualization/harris_noaa_dat/1996-2002.csv')
+p3 <- read.csv('D:/SMU/DS 6390 Visualization/harris_noaa_dat/2003-2011.csv')
+p4 <- read.csv('D:/SMU/DS 6390 Visualization/harris_noaa_dat/2012-2020.csv')
+```
+
+```{r}
+htotal = 0
+htotal <- rbind(p1[, c('EVENT_ID', 'BEGIN_LOCATION', 'BEGIN_DATE', 'EVENT_TYPE', 'DAMAGE_PROPERTY_NUM')], p2[, c('EVENT_ID', 'BEGIN_LOCATION', 'BEGIN_DATE', 'EVENT_TYPE', 'DAMAGE_PROPERTY_NUM')])
+htotal <- rbind(htotal, p3[, c('EVENT_ID', 'BEGIN_LOCATION', 'BEGIN_DATE', 'EVENT_TYPE', 'DAMAGE_PROPERTY_NUM')])
+htotal <- rbind(htotal, p4[, c('EVENT_ID', 'BEGIN_LOCATION', 'BEGIN_DATE', 'EVENT_TYPE', 'DAMAGE_PROPERTY_NUM')])
+htotal$BEGIN_DATE <- as.Date((htotal$BEGIN_DATE), '%m/%d/%Y')
+htotal$DAMAGE_PROPERTY_NUM <- as.integer(htotal$DAMAGE_PROPERTY_NUM)
+htotal$DAMAGE_PROPERTY_NUM[is.na(htotal$DAMAGE_PROPERTY_NUM)] <- 0
+#htotal[htotal == '' ] <- NA
+#htotal[htotal== ''] <- 0
+
+#superimpose on daily range?
+d_range <- seq(htotal$BEGIN_DATE[1], by = 'day', to = htotal$BEGIN_DATE[length(htotal$BEGIN_DATE)])
+hdf <- data.frame('date' = d_range, 'damages' = NA)
+h_set <- htotal[c('BEGIN_DATE', 'DAMAGE_PROPERTY_NUM')]
+names(h_set) <- c('date', 'damages')
+h_line <- merge(hdf, h_set, by = 'date', all.y = TRUE)
+h_line <- h_line[, c(1, 3)] #drop unused middle column
+names(h_line) <- c('Date', 'Damages')
+#h_line$Damages[is.na(h_line$Damages)] <- 0
+```
+
+```{r}
+plotts.sample.wge(h_line$Damages)
+```
+
+```{r}
+ggplot(h_line) + 
+  geom_line(aes(x = Date, y = Damages)) + scale_y_log10()
+```
+```{r}
+l1 <- read.csv('D:/SMU/DS 6390 Visualization/harris_noaa_dat/orleans_1950-2020.csv')
+l1$BEGIN_DATE <- as.Date((l1$BEGIN_DATE), '%m/%d/%Y')
+l1$DAMAGE_PROPERTY_NUM <- as.integer(l1$DAMAGE_PROPERTY_NUM)
+
+l_range <- seq(l1$BEGIN_DATE[1], by = 'day', to = l1$BEGIN_DATE[length(l1$BEGIN_DATE)])
+ldf <- data.frame('date' = l_range, 'damages' = NA)
+
+l_set <- l1[c('BEGIN_DATE', 'BEGIN_LOCATION', 'EVENT_TYPE', 'DAMAGE_PROPERTY_NUM', 'EPISODE_NARRATIVE', 'EVENT_NARRATIVE')]
+names(l_set) <- c('date', 'Location', 'Type', 'Damages_USD', 'Episode Description', 'Event Description')
+l_line <- merge(ldf, l_set, by = 'date', all.y = TRUE)
+l_line <- l_line[, -2] #drop unused middle column
+#names(l_line) <- c('Date', 'Damages')
+head(l_line)
+```
+```{r}
+v2 <- ggplot(l_line) + 
+  geom_line(aes(x = date, y = Damages_USD)) + #scale_y_log10() #hmm scale messes up the plotly
+  geom_text(aes(x = date, y = Damages_USD, label = title))
+ggplotly(v2)
+#v2
+```
+
+```{r}
+x <- head(hdf)
+y <- head(h_set)
+names(y) <- c('date', 'damages')
+merge(x, y, by = 'date', all.y = TRUE)
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```

@@ -1,0 +1,344 @@
+---
+title: "Weather Event History"
+output: 
+  flexdashboard::flex_dashboard:
+    #orientation: columns
+    vertical_layout: fill
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(ggplot2)
+library(reshape2)
+library(tswge)
+library(tidyverse)
+library(plotly)
+library(kableExtra)
+library(ggrepel)
+
+#data from https://www.ncdc.noaa.gov/stormevents/ 
+orleans <- read.csv('D:/SMU/DS 6390 Visualization/orleans_county_noaa_data_costliest.csv')
+harris <- read.csv('D:/SMU/DS 6390 Visualization/harris_county_noaa_data_costliest.csv')
+
+dfo <- orleans[, c('CZ_NAME_STR', 'BEGIN_DATE', 'EVENT_TYPE', 'DAMAGE_PROPERTY_NUM', 'title')]
+dfh <- harris[, c('CZ_NAME_STR', 'BEGIN_DATE', 'EVENT_TYPE', 'DAMAGE_PROPERTY_NUM', 'title')]
+dfo$BEGIN_DATE <- as.Date((dfo$BEGIN_DATE), '%m/%d/%Y')
+dfh$BEGIN_DATE <- as.Date((dfh$BEGIN_DATE), '%m/%d/%Y')
+
+#sort by date
+orleans2 <- dfo[order(dfo$BEGIN_DATE), ]
+harris2 <- dfh[order(dfh$BEGIN_DATE), ]
+```
+
+Galveston  {data-orientation=rows}
+===========================================================
+Row
+----------------------------------------------------------
+### Cost
+
+```{r}
+valueBox('26 Billion USD', icon = "fa-dollar-sign")
+```
+
+### Dimensions
+
+```{r}
+valueBox('15 Miles', icon = 'ion-hammer')
+```
+
+### Construction Time
+
+```{r}
+valueBox('12-20 Years', icon = "fa-calendar")
+```
+
+### Elevation Above Waterline
+
+```{r}
+valueBox('21ft / 6.4m', icon = 'ion-waterdrop')
+```
+
+### Environmental Impact
+
+```{r}
+valueBox('???', icon = 'ion-android-globe')
+#note, need to use v2 codes for ionicons - https://ionicons.com/v2/cheatsheet.html 
+```
+
+
+Row
+--------------------------------------------------------
+### Ike Dike Gates (Render)
+
+```{r p1, echo = F, fig.cap = "Title", out.width = '100%'}
+knitr::include_graphics("D:/SMU/DS 6390 Visualization/Ike-Dike-Gates.jpg")
+#Final draft scheduled for April 2021 public release
+```
+### Galveston Coastal Barrier Proposal
+
+```{r p5, echo = F, fig.cap = "Title", out.width = '100%'}
+knitr::include_graphics("D:/SMU/DS 6390 Visualization/Galveston-IkeDike.png")
+```
+
+
+New Orleans  {data-orientation=rows}
+===========================================================
+Row
+----------------------------------------------------------
+### Cost
+
+```{r}
+valueBox('1.3 Billion USD', icon = "fa-dollar-sign")
+```
+
+### Dimensions
+
+```{r}
+valueBox('1.8 Miles', icon = 'ion-hammer')
+```
+
+### Construction Time
+
+```{r}
+valueBox('5 Years', icon = "fa-calendar")
+```
+
+### Elevation Above Waterline
+
+```{r}
+valueBox('26ft / 7.9m', icon = 'ion-waterdrop')
+```
+
+### Environmental Impact
+
+```{r}
+valueBox('Minimal', icon = 'ion-android-globe')
+#note, need to use v2 codes for ionicons - https://ionicons.com/v2/cheatsheet.html 
+```
+
+
+Row
+--------------------------------------------------------
+### INHC Lake Borgne Surge Barrier
+```{r p3, echo = F, fig.cap = "Title", out.width = '100%'}
+knitr::include_graphics("D:/SMU/DS 6390 Visualization/IHNC_Surge_Barrier_Construction_from_air.jpg")
+```
+
+
+
+Weather History  {data-orientation=columns}
+===========================================================
+
+Column {data-width=650}
+-----------------------------------------------------------------------
+
+### Orleans County Storm Event History
+
+```{r, fig.width=15, fig.height=5}
+v1 <- ggplot(orleans2) + 
+  geom_line(aes(BEGIN_DATE, DAMAGE_PROPERTY_NUM), na.rm = TRUE) +
+  #scale_y_log10() + 
+  scale_y_log10(oob = scales::squish_infinite) +
+  xlab('Date') + ylab('Property Damage USD (Scaled)') +
+  ggtitle('NOAA Weather Event Data 2000-2020', subtitle = 'Orleans County') +
+  geom_text_repel(aes(BEGIN_DATE, DAMAGE_PROPERTY_NUM, label = title), 
+                  direction = 'both') + 
+  geom_segment(x = as.Date('05/14/2013', '%m/%d/%Y'), y = 0, xend = as.Date('05/14/2013', '%m/%d/%Y'), yend = 1.1e+1, colour = 'blue') +
+  geom_text(aes(x = as.Date('05/14/2013', '%m/%d/%Y'), y = 1.79e+10), label = 'IHNC Lake Borgne Surge Barrier Completed', nudge_y = 1.1) + theme_classic() + theme(aspect.ratio = 4/15) +
+  geom_smooth(aes(BEGIN_DATE, DAMAGE_PROPERTY_NUM), method = 'loess') 
+v1
+#ggplotly(v1) #plotly messes with scale 
+```
+
+
+### Harris County Storm Event History 
+```{r, fig.width=15, fig.height=5}
+ggplot(harris2) + 
+  geom_line(aes(BEGIN_DATE, DAMAGE_PROPERTY_NUM)) +
+  scale_y_log10(oob = scales::squish_infinite) +#scale_y_log10() + 
+  xlab('Date') + ylab('Property Damages USD (Scaled)') +
+  ggtitle('NOAA Weather Event Data 2000-2020', subtitle = 'Harris County') +
+  #geom_text(aes(BEGIN_DATE, DAMAGE_PROPERTY_NUM, label = title)) + 
+  geom_text_repel(aes(BEGIN_DATE, DAMAGE_PROPERTY_NUM, label = title), 
+                  direction = 'both') +
+  theme_classic() + theme(aspect.ratio = 4/15) + 
+  geom_smooth(aes(BEGIN_DATE, DAMAGE_PROPERTY_NUM), method = 'loess') 
+```
+
+Column {data-width=350}
+-----------------------------------------------------------------------
+
+### Orleans County Weather Events
+
+```{r}
+names(dfo) <- c('Location', 'Date', 'Event Type', 'Property Damage ($)', 'Name')
+dfo$`Property Damage ($)` <- prettyNum(format(dfo$`Property Damage ($)`, scientific = F), big.mark = ',') #format with scientific = f to strip scientific notation, prettynum to put in comma spaces 
+
+dfo %>% kbl(align = c('c', 'c', 'c', 'r', 'c')) %>% kable_styling(bootstrap_options = "striped", full_width = F)
+#kable_styling(kbl(dfo))
+```
+
+### Harris County Weather Events
+
+```{r}
+#DT::renderDataTable(dfh) #this one is rshiny only 
+names(dfh) <- c('Location', 'Date', 'Event Type', 'Property Damage ($)', 'Name')
+dfh$`Property Damage ($)` <- prettyNum(format(dfh$`Property Damage ($)`, scientific = F), big.mark = ',') #format with scientific = f to strip scientific notation, prettynum to put in comma spaces 
+
+dfh %>% kbl(align = c('c', 'c', 'c', 'r', 'c')) %>% kable_styling(bootstrap_options = "striped",full_width = F)
+```
+
+Additional Statistics {data-orientation=rows}
+=========================================================================
+
+Row
+-----------------------------------------------------------------------------
+
+### Orleans County NOAA Weather Records 1950-2020 - Event Type Distribution
+
+
+```{r, echo = FALSE}
+o1 <-read.csv('D:/SMU/DS 6390 Visualization/harris_noaa_dat/orleans_1950-2020.csv')
+o1$BEGIN_DATE <- as.Date((o1$BEGIN_DATE), '%m/%d/%Y')
+o1$DAMAGE_PROPERTY_NUM <- as.integer(o1$DAMAGE_PROPERTY_NUM)
+o1$Damages[is.na(o1$DAMAGE_PROPERTY_NUM)] <- 0
+
+d_range <- seq(o1$BEGIN_DATE[1], by ='day', to = o1$BEGIN_DATE[length(o1$BEGIN_DATE)])
+odf <- data.frame('BEGIN_DATE' = d_range, 'Damages' = NA) 
+
+o_line <- merge(odf, o1, by = 'BEGIN_DATE', all.x = TRUE) #merge and distribute events by real calender days
+o_line <- o_line[, -2] #drop damages.x
+o_line[is.na(o_line)] <- 0
+
+library(fmsb) #radar graph
+elist <- o_line[o_line$EVENT_TYPE != '0', ]
+e2 <- (as.data.frame(table(elist$EVENT_TYPE)))
+e2$Freq <- log10(e2$Freq)
+
+data <- as.data.frame(matrix(rep(max(e2$Freq), 10), ncol = 22))
+colnames(data) <- e2$Var1
+data <- rbind(data, rep(0, 22), e2$Freq)
+radarchart(data)
+#radarchart requires dataframe with maxlevel, minlevel, and actual value as rows
+```
+
+### Orleans County NOAA Weather Records 1950-2020 - Total Monetary Damages By Event Type
+
+```{r}
+o1$TOTAL_DAMAGE <- o1$DAMAGE_CROPS_NUM + o1$DAMAGE_PROPERTY_NUM
+o3 <- aggregate(o1$TOTAL_DAMAGE, by = list(o1$EVENT_TYPE), FUN = sum)
+names(o3) <- c('type', 'TOTAL_DAMAGES')
+#o3$TOTAL_DAMAGES <- log10(o3$TOTAL_DAMAGES)
+o3[is.na(o3)] <- 0
+o4 <- data.frame(rep(max(o3$TOTAL_DAMAGES), length(o3$type)), rep(0, length(o3$type)), o3$TOTAL_DAMAGES)
+names(o4) <- c(1, 2, 3)
+o5 <- t(o4)
+colnames(o5) <- c(o3$type)
+o5 <- as.data.frame(o5)
+radarchart(o5)
+```
+
+### Orleans County Weather Event Distribution 
+
+```{r}
+ggplot(orleans2) + geom_jitter(aes(x  = BEGIN_DATE, y = CZ_NAME_STR, color = EVENT_TYPE)) + scale_fill_fermenter() +
+  ggtitle('Event Type by Area') + xlab('Date') + ylab('Location')
+```
+
+Row
+---------------------------------------------------------
+
+### Harris County NOAA Weather Records 1950-2020 - Event Type Distribution
+
+```{r}
+p1 <- read.csv('D:/SMU/DS 6390 Visualization/harris_noaa_dat/1950-1995.csv')
+p2 <- read.csv('D:/SMU/DS 6390 Visualization/harris_noaa_dat/1996-2002.csv')
+p3 <- read.csv('D:/SMU/DS 6390 Visualization/harris_noaa_dat/2003-2011.csv')
+p4 <- read.csv('D:/SMU/DS 6390 Visualization/harris_noaa_dat/2012-2020.csv')
+
+#htotal <- rbind(as.data.frame(p1), as.data.frame(p2), as.data.frame(p3), as.data.frame(p4)) #misaligned csv's prevent this from working properly, fields get mixed 
+
+htotal = 0
+htotal <- rbind(p1[, c('EVENT_ID', 'BEGIN_LOCATION', 'BEGIN_DATE', 'EVENT_TYPE', 'DAMAGE_PROPERTY_NUM', 'DAMAGE_CROPS_NUM')], p2[, c('EVENT_ID', 'BEGIN_LOCATION', 'BEGIN_DATE', 'EVENT_TYPE', 'DAMAGE_PROPERTY_NUM', 'DAMAGE_CROPS_NUM')])
+htotal <- rbind(htotal, p3[, c('EVENT_ID', 'BEGIN_LOCATION', 'BEGIN_DATE', 'EVENT_TYPE', 'DAMAGE_PROPERTY_NUM', 'DAMAGE_CROPS_NUM')])
+htotal <- rbind(htotal, p4[, c('EVENT_ID', 'BEGIN_LOCATION', 'BEGIN_DATE', 'EVENT_TYPE', 'DAMAGE_PROPERTY_NUM', 'DAMAGE_CROPS_NUM')])
+
+htotal$BEGIN_DATE <- as.Date((htotal$BEGIN_DATE), '%m/%d/%Y')
+htotal$DAMAGE_CROPS_NUM <- as.integer(htotal$DAMAGE_CROPS_NUM)
+htotal$DAMAGE_PROPERTY_NUM <- as.integer(htotal$DAMAGE_PROPERTY_NUM)
+
+htotal$DAMAGE_PROPERTY_NUM[is.na(htotal$DAMAGE_PROPERTY_NUM)] <- 0
+htotal$DAMAGE_CROPS_NUM[is.na(htotal$DAMAGE_CROPS_NUM)] <- 0
+
+htotal$TOTAL_DAMAGE <- htotal$DAMAGE_CROPS_NUM + htotal$DAMAGE_PROPERTY_NUM
+
+#superimpose on daily range?
+d_range <- seq(htotal$BEGIN_DATE[1], by = 'day', to = htotal$BEGIN_DATE[length(htotal$BEGIN_DATE)])
+hdf <- data.frame('BEGIN_DATE' = d_range, 'damages' = NA)
+h_line <- merge(hdf, htotal, by = 'BEGIN_DATE', all.x = TRUE)
+
+h_line[is.na(h_line)] <- 0
+#pacf(h_line$DAMAGE_PROPERTY_NUM)
+
+library(fmsb) #radar graph
+elist2 <- h_line[h_line$EVENT_TYPE != '0', ]
+e2 <- (as.data.frame(table(elist2$EVENT_TYPE)))
+e2$Freq <- log10(e2$Freq)
+
+data <- as.data.frame(matrix(rep(max(e2$Freq), 10), ncol = 22))
+colnames(data) <- e2$Var1
+data <- rbind(data, rep(0, 22), e2$Freq)
+radarchart(data)
+```
+
+### Harris County NOAA Weather Records 1950-2020 - Total Monetary Damages by Event Type
+
+```{r}
+h3 <- aggregate(htotal$TOTAL_DAMAGE, by = list(htotal$EVENT_TYPE), FUN = sum)
+names(h3) <- c('type', 'TOTAL_DAMAGES')
+h3[is.na(h3)] <- 0
+h3 <- h3[-c(1:13), ]
+h4 <- data.frame(rep(max(h3$TOTAL_DAMAGES), length(h3$type)), rep(0, length(h3$type)), h3$TOTAL_DAMAGES)
+names(h4) <- c(1, 2, 3)
+h5 <- t(h4)
+typelist <- h3$type
+#typelist[c(1:13)] <- ''
+colnames(h5) <- h3$type #typelist
+h5 <- as.data.frame(h5)
+radarchart(h5)
+```
+
+### Harris County Weather Event Distribution
+
+```{r}
+ggplot(harris2) + geom_jitter(aes(x  = BEGIN_DATE, y = CZ_NAME_STR, color = EVENT_TYPE)) + scale_fill_fermenter() +
+  ggtitle('Event Type by Area') + xlab('Date') + ylab('Location')
+```
+
+
+
+Additional Information {data-orientation=columns}
+========================================================
+
+Column
+----------------------------
+
+### Sources  
+US Army Corps Of Engineers Planning Documents 
+- https://www.swg.usace.army.mil/Business-With-Us/Planning-Environmental-Branch/Documents-for-Public-Review/
+- https://www.mvn.usace.army.mil/Missions/Environmental/NEPA-Compliance-Documents/HSDRRS-Projects/IER-11-IHNC-Navigable-Floodgates-Orleans-and-St-Bernard-Parishes/ 
+
+2018 Texas University Proposal Documentation 
+- https://www.tamug.edu/ikedike/pdf/JSU-Final-Report-Ike-Dike-Concept.pdf
+
+News Articles/Other
+- https://www.houstonpublicmedia.org/articles/news/energy-environment/2020/10/30/385009/army-corps-unveils-updated-version-of-its-26-billion-project-to-protect-the-texas-gulf-coast-from-hurricanes-storm-surge/
+- https://en.wikipedia.org/wiki/Ike_Dike
+- https://en.wikipedia.org/wiki/IHNC_Lake_Borgne_Surge_Barrier
+- https://defendernetwork.com/news/local-state/army-corps-set-to-propose-hurricane-protection-plan-for-houston/
+
+
+
+
+
+
