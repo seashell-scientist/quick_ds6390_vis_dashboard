@@ -1,1 +1,1 @@
-# quick_ds6390_vis_dashboard
+# Testing flexdashboard for DS6390 project 1
